@@ -26,11 +26,17 @@ type RecentPostSummaryWriter struct {
 	pullRequestRepository pullRequest.Repository
 }
 
-func NewRecentPostSummaryWriter(parser Parser, summarizer *Summarizer, prService *GitHubPRService) (*RecentPostSummaryWriter, error) {
+func NewRecentPostSummaryWriter(parser Parser, summarizer *Summarizer, prService *GitHubPRService, memberRepository member.Repository, studyRepository study.Repository, studyMemberRepository studyMember.Repository, postRepository post.Repository, summaryRepository summary.Repository, pullRequestRepository pullRequest.Repository) (*RecentPostSummaryWriter, error) {
 	return &RecentPostSummaryWriter{
-		parser:     parser,
-		summarizer: summarizer,
-		prService:  prService,
+		parser:                parser,
+		summarizer:            summarizer,
+		prService:             prService,
+		memberRepository:      memberRepository,
+		studyRepository:       studyRepository,
+		studyMemberRepository: studyMemberRepository,
+		postRepository:        postRepository,
+		summaryRepository:     summaryRepository,
+		pullRequestRepository: pullRequestRepository,
 	}, nil
 }
 
