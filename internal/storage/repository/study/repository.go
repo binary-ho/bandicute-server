@@ -7,7 +7,7 @@ import (
 )
 
 type Repository interface {
-	GetStudy(ctx context.Context, id string) (*Model, error)
+	GetById(ctx context.Context, id string) (*Model, error)
 }
 
 func NewStudyRepository(base connection.Connection) Repository {

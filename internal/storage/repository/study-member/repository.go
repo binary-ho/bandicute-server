@@ -7,8 +7,8 @@ import (
 )
 
 type Repository interface {
-	GetStudyMembers(ctx context.Context, studyID string) ([]*Model, error)
-	GetStudyMember(ctx context.Context, studyMemberID string) (*Model, error)
+	GetAllByStudyId(ctx context.Context, studyID string) ([]*Model, error)
+	GetById(ctx context.Context, studyMemberID string) (*Model, error)
 }
 
 func NewStudyMemberRepository(base connection.Connection) Repository {

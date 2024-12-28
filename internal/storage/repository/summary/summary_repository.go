@@ -7,9 +7,9 @@ import (
 )
 
 type Repository interface {
-	CreatePostSummary(ctx context.Context, summary *Model) error
-	GetPostSummary(ctx context.Context, blogPostID string) (*Model, error)
-	UpdatePostSummary(ctx context.Context, summary *Model) error
+	GetByPostId(ctx context.Context, blogPostID string) (*Model, error)
+	Create(ctx context.Context, summary *Model) (*Model, error)
+	Update(ctx context.Context, summary *Model) (*Model, error)
 }
 
 func NewPostWriterRepository(base connection.Connection) Repository {

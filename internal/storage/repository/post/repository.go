@@ -7,11 +7,12 @@ import (
 )
 
 type Repository interface {
-	CreatePost(ctx context.Context, post *Model) error
-	GetLatestPost(ctx context.Context, memberID string) (*Model, error)
-	GetPost(ctx context.Context, id string) (*Model, error)
-	GetPostByGUID(ctx context.Context, guid string) (*Model, error)
-	UpdatePost(ctx context.Context, post *Model) error
+	GetById(ctx context.Context, id string) (*Model, error)
+	GetLatestByMemberId(ctx context.Context, memberID string) (*Model, error)
+	GetByGUID(ctx context.Context, guid string) (*Model, error)
+	Create(ctx context.Context, model *Model) (*Model, error)
+	CreateAll(ctx context.Context, models []*Model) ([]*Model, error)
+	Update(ctx context.Context, model *Model) (*Model, error)
 }
 
 func NewPostRepository(conn connection.Connection) Repository {
