@@ -4,157 +4,83 @@ import (
 	"bandicute-server/internal/storage/repository/member"
 	"bandicute-server/internal/storage/repository/post"
 	"bandicute-server/internal/storage/repository/study"
+	"bandicute-server/internal/template"
 	"bandicute-server/pkg/logger"
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
+	"net/http"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/oauth2"
 )
 
+const ReferencePrefix = "refs/heads/"
+
 type GitHubPRService struct {
-	client     *github.Client
-	prTemplate *template.Template
+	client              *github.Client
+	pullRequestTemplate *template.PullRequestTemplate
 }
 
 func NewGitHubPRService(token string) (*GitHubPRService, error) {
-	// Load and parse PR template
-	templateBytes, err := os.ReadFile("internal/templates/pr-template.json")
+	client := createOauth2Client(token)
+	pullRequestTemplate, err := template.NewPullRequestTemplate()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read PR template: %w", err)
+		return nil, err
 	}
-
-	var prTemplate struct {
-		Title string `json:"title"`
-		Body  struct {
-			Sections []struct {
-				Type    string   `json:"type"`
-				Title   string   `json:"title,omitempty"`
-				Content string   `json:"content,omitempty"`
-				Items   []string `json:"items,omitempty"`
-			} `json:"sections"`
-		} `json:"body"`
-		Variables []string `json:"variables"`
-	}
-	if err := json.Unmarshal(templateBytes, &prTemplate); err != nil {
-		return nil, fmt.Errorf("failed to parse PR template: %w", err)
-	}
-
-	// Create PR body template
-	var bodyBuilder strings.Builder
-	for _, section := range prTemplate.Body.Sections {
-		switch section.Type {
-		case "header", "footer":
-			bodyBuilder.WriteString(section.Content + "\n\n")
-		case "info", "summary", "recommendation":
-			if section.Title != "" {
-				bodyBuilder.WriteString("## " + section.Title + "\n\n")
-			}
-			if len(section.Items) > 0 {
-				for _, item := range section.Items {
-					bodyBuilder.WriteString("- " + item + "\n")
-				}
-				bodyBuilder.WriteString("\n")
-			}
-			if section.Content != "" {
-				bodyBuilder.WriteString(section.Content + "\n\n")
-			}
-		}
-	}
-
-	tmpl, err := template.New("pr").Parse(prTemplate.Title + "\n---\n" + bodyBuilder.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	)
-	tc := oauth2.NewClient(context.Background(), ts)
 
 	return &GitHubPRService{
-		client:     github.NewClient(tc),
-		prTemplate: tmpl,
+		client:              github.NewClient(client),
+		pullRequestTemplate: pullRequestTemplate,
 	}, nil
 }
 
 func (s *GitHubPRService) CreatePR(ctx context.Context, study *study.Model, member *member.Model, post *post.Model, summary string) (string, error) {
-	// Parse storage Repository
-	repoURL := study.Repository
-	parts := strings.Split(repoURL, "/")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid storage Repository: %s", repoURL)
+	// 1. Parse storage Repository
+	owner, repo, err := parseOwnerAndRepo(study.Repository)
+	if err != nil {
+		return "", err
 	}
-	owner := parts[len(parts)-2]
-	repo := parts[len(parts)-1]
 
-	// Get default branch
+	// 2. Get default Branch And Reference
 	repository, _, err := s.client.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		return "", fmt.Errorf("failed to get storage: %w", err)
 	}
 	defaultBranch := repository.GetDefaultBranch()
-
-	// Create branch name
-	timestamp := time.Now().Format("20060102-150405")
-	sanitizedTitle := sanitizeString(post.Title)
-	branchName := fmt.Sprintf("post/%s-%s", timestamp, sanitizedTitle)
-
-	// Get the default branch reference
-	ref, _, err := s.client.Git.GetRef(ctx, owner, repo, "refs/heads/"+defaultBranch)
+	defaultBranchReference, _, err := s.client.Git.GetRef(ctx, owner, repo, ReferencePrefix+defaultBranch)
 	if err != nil {
 		return "", fmt.Errorf("failed to get reference: %w", err)
 	}
 
-	// Create a new branch
-	newRef := &github.Reference{
-		Ref:    github.String("refs/heads/" + branchName),
-		Object: ref.Object,
+	// 3. Create a new Branch And Reference
+	newBranchName := createBranchName(post.Title)
+	newBranchReference := &github.Reference{
+		Ref:    github.String(ReferencePrefix + newBranchName),
+		Object: defaultBranchReference.Object,
 	}
-	_, _, err = s.client.Git.CreateRef(ctx, owner, repo, newRef)
+
+	_, _, err = s.client.Git.CreateRef(ctx, owner, repo, newBranchReference)
 	if err != nil {
 		return "", fmt.Errorf("failed to create branch: %w", err)
 	}
 
-	// Format date
+	// 4. PR Tempate 채우기
 	publishedAt := post.PublishedAt.Format("2006년 01월 02일")
-
-	// Execute template
-	var bodyBuf bytes.Buffer
-	err = s.prTemplate.Execute(&bodyBuf, map[string]interface{}{
-		"member_name":  member.Name,
-		"post_title":   post.Title,
-		"published_at": publishedAt,
-		"post_url":     post.URL,
-		"summary":      summary,
-	})
+	pullRequestContent, err := s.pullRequestTemplate.FillOut(member.Name, post.Title, publishedAt, post.URL, summary)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
+		return "", fmt.Errorf("failed to execute summaryPromptTemplate: %w", err)
 	}
 
-	// Split title and body
-	parts = strings.SplitN(bodyBuf.String(), "\n---\n", 2)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid template output format")
-	}
-	title := strings.TrimSpace(parts[0])
-	body := strings.TrimSpace(parts[1])
-
-	// Create pull request
-	pr := &github.NewPullRequest{
-		Title: github.String(title),
-		Head:  github.String(branchName),
+	// 5. PR 생성하기
+	pullRequest, _, err := s.client.PullRequests.Create(ctx, owner, repo, &github.NewPullRequest{
+		Title: github.String(pullRequestContent.Title),
+		Head:  github.String(newBranchName),
 		Base:  github.String(defaultBranch),
-		Body:  github.String(body),
-	}
+		Body:  github.String(pullRequestContent.Body),
+	})
 
-	pullRequest, _, err := s.client.PullRequests.Create(ctx, owner, repo, pr)
 	if err != nil {
 		return "", fmt.Errorf("failed to create pull request: %w", err)
 	}
@@ -167,10 +93,37 @@ func (s *GitHubPRService) CreatePR(ctx context.Context, study *study.Model, memb
 	return pullRequest.GetHTMLURL(), nil
 }
 
+func createOauth2Client(token string) *http.Client {
+	tokenSource := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	client := oauth2.NewClient(context.Background(), tokenSource)
+	return client
+}
+
+func parseOwnerAndRepo(repository string) (owner, repo string, err error) {
+	parts := strings.Split(repository, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("invalid storage Repository: %s", repository)
+	}
+
+	owner = parts[len(parts)-2]
+	repo = parts[len(parts)-1]
+	return owner, repo, nil
+}
+
+func createBranchName(postTitle string) string {
+	timestamp := time.Now().Format("20060102-150405")
+	sanitizedTitle := sanitizeString(postTitle)
+	branchName := fmt.Sprintf("post/%s-%s", timestamp, sanitizedTitle)
+	return branchName
+}
+
 func sanitizeString(s string) string {
-	// Replace spaces with hyphens
-	s = strings.ReplaceAll(s, " ", "-")
-	// Remove special characters
+	// 1. 공백 지워버려
+	s = strings.ReplaceAll(s, " ", "_")
+
+	// 2. 특수문자 지우기
 	s = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' {
 			return r

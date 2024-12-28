@@ -11,78 +11,61 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
-type Parser interface {
-	ParseBlog(ctx context.Context, url string) ([]*post.Model, error)
+const FeedUrlSuffix = "/rss"
+
+type PostParser struct {
+	feedParser *gofeed.Parser
 }
 
-type TistoryParser struct {
-	parser *gofeed.Parser
-}
-
-func NewTistoryParser() Parser {
-	return &TistoryParser{
-		parser: gofeed.NewParser(),
+func NewRssParser() *PostParser {
+	return &PostParser{
+		feedParser: gofeed.NewParser(),
 	}
 }
 
-func (p *TistoryParser) ParseBlog(ctx context.Context, url string) ([]*post.Model, error) {
-	// Add /rss to the Repository if it's not already there
-	if !strings.HasSuffix(url, "/rss") {
-		url = strings.TrimSuffix(url, "/") + "/rss"
+func (p *PostParser) Parse(ctx context.Context, blogUrl string) ([]*post.Model, error) {
+	feedUrl := getFeedUrl(blogUrl)
+	return p.parseFeed(ctx, feedUrl)
+}
+
+func getFeedUrl(blogUrl string) string {
+	if strings.HasSuffix(blogUrl, FeedUrlSuffix) {
+		return blogUrl
 	}
+	return strings.TrimSuffix(blogUrl, "/") + FeedUrlSuffix
+}
 
-	logger.Info("Parsing post", logger.Fields{
-		"url": url,
-	})
-
-	feed, err := p.parser.ParseURLWithContext(url, ctx)
+func (p *PostParser) parseFeed(ctx context.Context, rssFeedUrl string) ([]*post.Model, error) {
+	feed, err := p.feedParser.ParseURLWithContext(rssFeedUrl, ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse post feed: %w", err)
+		return nil, fmt.Errorf("failed to parseFeed post feed: %w", err)
 	}
 
 	var posts []*post.Model
 	for _, item := range feed.Items {
-		// Parse the published date
-		publishedAt := item.PublishedParsed
-		if publishedAt == nil {
-			// Try to parse the published date manually
-			publishedAt, err = parseDate(item.Published)
-			if err != nil {
-				logger.Warn("Failed to parse published date", logger.Fields{
-					"url":   url,
-					"title": item.Title,
-					"date":  item.Published,
-					"error": err.Error(),
-				})
-				// Use current time as fallback
-				now := time.Now()
-				publishedAt = &now
-			}
+		publishedAt, parseErr := parsePublishedAt(item)
+		if parseErr != nil {
+			logParseError(rssFeedUrl, item, err)
+			return nil, fmt.Errorf("failed to parse published at %s: %w", publishedAt, parseErr)
 		}
 
-		post := &post.Model{
-			Title:       item.Title,
-			URL:         item.Link,
-			Content:     item.Content,
-			GUID:        item.GUID,
-			PublishedAt: *publishedAt,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-		}
-
-		posts = append(posts, post)
+		posts = append(posts, createPost(item, publishedAt))
 	}
 
-	logger.Info("Successfully parsed post", logger.Fields{
-		"url":   url,
-		"posts": len(posts),
-	})
-
+	logParseSuccess(rssFeedUrl, posts)
 	return posts, nil
 }
 
-// parseDate attempts to parse a date string in various formats
-func parseDate(date string) (*time.Time, error) {
+func parsePublishedAt(item *gofeed.Item) (*time.Time, error) {
+	if publishedAt := item.PublishedParsed; publishedAt != nil {
+		return publishedAt, nil
+	}
+
+	return parsePublishedDate(item.Published)
+}
+
+// parsePublishedDate attempts to parseFeed a date string in various formats
+func parsePublishedDate(date string) (*time.Time, error) {
 	formats := []string{
 		time.RFC1123,
 		time.RFC1123Z,
@@ -99,5 +82,33 @@ func parseDate(date string) (*time.Time, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("unable to parse date: %s", date)
+	return nil, fmt.Errorf("unable to parseFeed date: %s", date)
+}
+
+func createPost(item *gofeed.Item, publishedAt *time.Time) *post.Model {
+	return &post.Model{
+		Title:       item.Title,
+		URL:         item.Link,
+		Content:     item.Content,
+		GUID:        item.GUID,
+		PublishedAt: *publishedAt,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+}
+
+func logParseError(rssFeedUrl string, item *gofeed.Item, err error) {
+	logger.Warn("Failed to parseFeed published date", logger.Fields{
+		"rssFeedUrl": rssFeedUrl,
+		"title":      item.Title,
+		"date":       item.Published,
+		"error":      err.Error(),
+	})
+}
+
+func logParseSuccess(rssFeedUrl string, posts []*post.Model) {
+	logger.Info("Successfully parsed post", logger.Fields{
+		"rssFeedUrl": rssFeedUrl,
+		"posts":      len(posts),
+	})
 }

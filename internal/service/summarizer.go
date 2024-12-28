@@ -1,77 +1,65 @@
 package service
 
 import (
-	"bytes"
+	"bandicute-server/internal/template"
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"text/template"
-
 	"github.com/sashabaranov/go-openai"
 )
 
 type Summarizer struct {
-	client *openai.Client
-	prompt *template.Template
+	openaiClient          *openai.Client
+	summaryPromptTemplate *template.SummaryPromptTemplate
 }
 
-func NewGPTSummarizer(apiKey string) (*Summarizer, error) {
-	// Load and parse summary prompt template
-	promptBytes, err := os.ReadFile("internal/templates/summary-prompt.json")
+func NewSummarizer(apiKey string) (*Summarizer, error) {
+	summaryPromptTemplate, err := template.NewSummaryPromptTemplate()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read summary prompt template: %w", err)
-	}
-
-	var promptTemplate struct {
-		Template  string   `json:"template"`
-		Variables []string `json:"variables"`
-	}
-	if err := json.Unmarshal(promptBytes, &promptTemplate); err != nil {
-		return nil, fmt.Errorf("failed to parse summary prompt template: %w", err)
-	}
-
-	tmpl, err := template.New("summary").Parse(promptTemplate.Template)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
+		return nil, err
 	}
 
 	return &Summarizer{
-		client: openai.NewClient(apiKey),
-		prompt: tmpl,
+		openaiClient:          openai.NewClient(apiKey),
+		summaryPromptTemplate: summaryPromptTemplate,
 	}, nil
 }
 
 func (s *Summarizer) Summarize(ctx context.Context, title, content string) (string, error) {
-	var promptBuf bytes.Buffer
-	err := s.prompt.Execute(&promptBuf, map[string]interface{}{
-		"title":   title,
-		"content": content,
-	})
+	summaryPrompt, err := s.summaryPromptTemplate.FillOut(title, content)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
+		return "", err
 	}
 
-	resp, err := s.client.CreateChatCompletion(
-		ctx,
-		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: promptBuf.String(),
-				},
-			},
-		},
-	)
+	request := getSummaryRequest(summaryPrompt)
+	response, err := s.openaiClient.CreateChatCompletion(ctx, request)
+	if err = validateResponse(response, err); err != nil {
+		return "", err
+	}
 
+	return extractContent(response), nil
+}
+
+func getSummaryRequest(summaryPrompt string) openai.ChatCompletionRequest {
+	return openai.ChatCompletionRequest{
+		Model: openai.GPT3Dot5Turbo,
+		Messages: []openai.ChatCompletionMessage{{
+			Role:    openai.ChatMessageRoleUser,
+			Content: summaryPrompt,
+		}},
+	}
+}
+
+func validateResponse(response openai.ChatCompletionResponse, err error) error {
 	if err != nil {
-		return "", fmt.Errorf("failed to create chat completion: %w", err)
+		return fmt.Errorf("failed to create chat completion: %w", err)
 	}
 
-	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("no completion choices returned")
+	if len(response.Choices) == 0 {
+		return fmt.Errorf("no completion choices returned")
 	}
+	return nil
+}
 
-	return resp.Choices[0].Message.Content, nil
+func extractContent(response openai.ChatCompletionResponse) string {
+	return response.Choices[0].Message.Content
 }
