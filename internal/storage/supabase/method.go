@@ -1,7 +1,9 @@
 package supabase
 
+import "bandicute-server/internal/storage/repository/connection"
+
 const (
-	GetMethod   = "GET"
-	PostMethod  = "POST"
-	PatchMethod = "PATCH"
+	getMethod   = connection.DML("GET")
+	postMethod  = connection.DML("POST")
+	patchMethod = connection.DML("PATCH")
 )

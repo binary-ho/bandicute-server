@@ -2,7 +2,7 @@ package supabase
 
 import (
 	"bandicute-server/internal/storage/repository/connection"
-	pull_request "bandicute-server/internal/storage/repository/pull-request"
+	pullRequest "bandicute-server/internal/storage/repository/pull-request"
 	"context"
 	"fmt"
 )
@@ -11,22 +11,13 @@ type PullRequestRepository struct {
 	Connection connection.Connection
 }
 
-func (r *PullRequestRepository) CreatePullRequest(ctx context.Context, pr *pull_request.Model) error {
-	req, err := r.Connection.NewRequest(ctx, PostMethod, "BaseEndpoint/pull_requests", pr)
-	if err != nil {
-		return err
-	}
-
-	return r.Connection.Do(req, pr)
-}
-
-func (r *PullRequestRepository) GetPullRequest(ctx context.Context, blogPostID string, studyID string) (*pull_request.Model, error) {
-	req, err := r.Connection.NewRequest(ctx, GetMethod, fmt.Sprintf("BaseEndpoint/pull_requests?blog_post_id=eq.%s&study_id=eq.%s", blogPostID, studyID), nil)
+func (r *PullRequestRepository) GetByPostIdAndStudyId(ctx context.Context, blogPostID string, studyID string) (*pullRequest.Model, error) {
+	req, err := r.Connection.NewRequest(ctx, getMethod, pullRequest.TableName, fmt.Sprintf("blog_post_id=eq.%s&study_id=eq.%s", blogPostID, studyID), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var prs []*pull_request.Model
+	var prs []*pullRequest.Model
 	if err := r.Connection.Do(req, &prs); err != nil {
 		return nil, err
 	}
@@ -38,11 +29,22 @@ func (r *PullRequestRepository) GetPullRequest(ctx context.Context, blogPostID s
 	return prs[0], nil
 }
 
-func (r *PullRequestRepository) UpdatePullRequest(ctx context.Context, pr *pull_request.Model) error {
-	req, err := r.Connection.NewRequest(ctx, PatchMethod, "BaseEndpoint/pull_requests?id=eq."+pr.ID, pr)
+func (r *PullRequestRepository) Create(ctx context.Context, pr *pullRequest.Model) (*pullRequest.Model, error) {
+	req, err := r.Connection.NewRequest(ctx, postMethod, pullRequest.TableName, "", pr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return r.Connection.Do(req, nil)
+	err = r.Connection.Do(req, pr)
+	return pr, err
+}
+
+func (r *PullRequestRepository) Update(ctx context.Context, pr *pullRequest.Model) (*pullRequest.Model, error) {
+	req, err := r.Connection.NewRequest(ctx, patchMethod, pullRequest.TableName, "id=eq."+pr.ID, pr)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.Connection.Do(req, pr)
+	return pr, err
 }

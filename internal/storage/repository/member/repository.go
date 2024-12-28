@@ -7,8 +7,8 @@ import (
 )
 
 type Repository interface {
-	GetMember(ctx context.Context, id string) (*Model, error)
-	GetMemberByBlog(ctx context.Context, blog string) (*Model, error)
+	GetById(ctx context.Context, id string) (*Model, error)
+	GetBlogUrlById(ctx context.Context, id string) (string, error)
 }
 
 func NewMemberRepository(conn connection.Connection) Repository {

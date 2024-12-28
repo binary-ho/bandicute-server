@@ -7,9 +7,9 @@ import (
 )
 
 type Repository interface {
-	CreatePullRequest(ctx context.Context, pr *Model) error
-	GetPullRequest(ctx context.Context, blogPostID string, studyID string) (*Model, error)
-	UpdatePullRequest(ctx context.Context, pr *Model) error
+	GetByPostIdAndStudyId(ctx context.Context, blogPostID string, studyID string) (*Model, error)
+	Create(ctx context.Context, pr *Model) (*Model, error)
+	Update(ctx context.Context, pr *Model) (*Model, error)
 }
 
 func NewPullRequestRepository(conn connection.Connection) Repository {

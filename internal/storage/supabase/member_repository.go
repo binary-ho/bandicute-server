@@ -11,8 +11,8 @@ type MemberRepository struct {
 	Connection connection.Connection
 }
 
-func (r *MemberRepository) GetMember(ctx context.Context, id string) (*member.Model, error) {
-	req, err := r.Connection.NewRequest(ctx, GetMethod, "/members?id=eq."+id, nil)
+func (r *MemberRepository) GetById(ctx context.Context, id string) (*member.Model, error) {
+	req, err := r.Connection.NewRequest(ctx, getMethod, member.TableName, "id=eq."+id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,20 +29,16 @@ func (r *MemberRepository) GetMember(ctx context.Context, id string) (*member.Mo
 	return members[0], nil
 }
 
-func (r *MemberRepository) GetMemberByBlog(ctx context.Context, tistoryBlog string) (*member.Model, error) {
-	req, err := r.Connection.NewRequest(ctx, GetMethod, "/members?tistory_blog=eq."+tistoryBlog, nil)
+func (r *MemberRepository) GetBlogUrlById(ctx context.Context, id string) (string, error) {
+	req, err := r.Connection.NewRequest(ctx, getMethod, member.TableName, "select=tistory_blog&id=eq."+id, nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var members []*member.Model
-	if err := r.Connection.Do(req, &members); err != nil {
-		return nil, err
+	var blogUrl string
+	if err := r.Connection.Do(req, &blogUrl); err != nil {
+		return "", err
 	}
 
-	if len(members) == 0 {
-		return nil, fmt.Errorf("member not found with tistory post: %s", tistoryBlog)
-	}
-
-	return members[0], nil
+	return blogUrl, err
 }

@@ -11,17 +11,8 @@ type SummaryRepository struct {
 	connection.Connection
 }
 
-func (r *SummaryRepository) CreatePostSummary(ctx context.Context, summary *summary.Model) error {
-	req, err := r.NewRequest(ctx, PostMethod, "BaseEndpoint/post_summaries", summary)
-	if err != nil {
-		return err
-	}
-
-	return r.Do(req, summary)
-}
-
-func (r *SummaryRepository) GetPostSummary(ctx context.Context, blogPostID string) (*summary.Model, error) {
-	req, err := r.NewRequest(ctx, GetMethod, "BaseEndpoint/post_summaries?blog_post_id=eq."+blogPostID, nil)
+func (r *SummaryRepository) GetByPostId(ctx context.Context, blogPostID string) (*summary.Model, error) {
+	req, err := r.NewRequest(ctx, getMethod, summary.TableName, "blog_post_id=eq."+blogPostID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,11 +29,22 @@ func (r *SummaryRepository) GetPostSummary(ctx context.Context, blogPostID strin
 	return summaries[0], nil
 }
 
-func (r *SummaryRepository) UpdatePostSummary(ctx context.Context, summary *summary.Model) error {
-	req, err := r.NewRequest(ctx, PatchMethod, "BaseEndpoint/post_summaries?id=eq."+summary.ID, summary)
+func (r *SummaryRepository) Create(ctx context.Context, model *summary.Model) (*summary.Model, error) {
+	req, err := r.NewRequest(ctx, postMethod, summary.TableName, "", model)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return r.Do(req, nil)
+	err = r.Do(req, model)
+	return model, err
+}
+
+func (r *SummaryRepository) Update(ctx context.Context, model *summary.Model) (*summary.Model, error) {
+	req, err := r.NewRequest(ctx, patchMethod, summary.TableName, "id=eq."+model.ID, model)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.Do(req, model)
+	return model, err
 }

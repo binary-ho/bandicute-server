@@ -1,6 +1,9 @@
 package member
 
-import "time"
+import (
+	"bandicute-server/internal/storage/repository/connection"
+	"time"
+)
 
 // Model represents a study member
 type Model struct {
@@ -10,3 +13,5 @@ type Model struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+const TableName = connection.Table("members")
