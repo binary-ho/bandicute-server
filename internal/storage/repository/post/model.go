@@ -1,6 +1,9 @@
 package post
 
-import "time"
+import (
+	"bandicute-server/internal/storage/repository/connection"
+	"time"
+)
 
 // Model represents a post
 type Model struct {
@@ -14,3 +17,5 @@ type Model struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+const TableName = connection.Table("blog_posts")

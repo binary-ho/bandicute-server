@@ -8,7 +8,7 @@ import (
 )
 
 type Connection interface {
-	NewRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error)
+	NewRequest(ctx context.Context, method DML, table Table, query string, body interface{}) (*http.Request, error)
 	Do(req *http.Request, v interface{}) error
 }
 
@@ -19,3 +19,7 @@ func NewConnection(baseURL, apiKey string) Connection {
 		Client:  &http.Client{},
 	}
 }
+
+type DML string
+type Query string
+type Table string
