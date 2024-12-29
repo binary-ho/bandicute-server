@@ -5,7 +5,6 @@ import (
 	"bandicute-server/pkg/logger"
 	"encoding/json"
 	"net/http"
-	"strings"
 )
 
 type Application struct {
@@ -39,7 +38,7 @@ func (app *Application) WriteByStudy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	studyId := strings.TrimPrefix(r.URL.Path, "/studies/")
+	studyId := r.PathValue("studyId")
 	if studyId == "" {
 		app.sendError(w, "studyId is required", http.StatusBadRequest)
 		return
@@ -55,7 +54,7 @@ func (app *Application) WriteByMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memberId := strings.TrimPrefix(r.URL.Path, "/members/")
+	memberId := r.PathValue("memberId")
 	if memberId == "" {
 		app.sendError(w, "memberId is required", http.StatusBadRequest)
 		return
