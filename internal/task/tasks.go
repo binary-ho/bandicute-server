@@ -1,4 +1,4 @@
-package job
+package task
 
 import (
 	"bandicute-server/internal/service"
@@ -14,7 +14,7 @@ type Handler struct {
 	openPullRequestRequestChannel     *channel.OpenPullRequestRequest
 }
 
-func NewJobHandler(
+func NewHandler(
 	parser *service.Parser,
 	summarizer *service.Summarizer,
 	pullRequestOpener *service.PullRequestOpener,
@@ -37,11 +37,11 @@ func (h *Handler) Run() {
 		for {
 			select {
 			case request := <-*h.parsePostByMemberIdRequestChannel:
-				h.parser.ParseRecentPostByMember(request.Context, request.MemberId, h.summarizeRequestChannel)
+				go h.parser.ParseRecentPostByMember(request.Context, request.MemberId, h.summarizeRequestChannel)
 			case request := <-*h.summarizeRequestChannel:
-				h.summarizer.Summarize(request, h.openPullRequestRequestChannel)
+				go h.summarizer.Summarize(request, h.openPullRequestRequestChannel)
 			case request := <-*h.openPullRequestRequestChannel:
-				h.pullRequestOpener.OpenPullRequest(request)
+				go h.pullRequestOpener.OpenPullRequest(request)
 			}
 		}
 	}()
