@@ -17,7 +17,7 @@ type PostParser struct {
 	feedParser *gofeed.Parser
 }
 
-func NewRssParser() *PostParser {
+func NewPostParser() *PostParser {
 	return &PostParser{
 		feedParser: gofeed.NewParser(),
 	}

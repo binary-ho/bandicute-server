@@ -13,10 +13,24 @@ import (
 )
 
 type Parser struct {
-	parser            util.PostParser
+	parser            *util.PostParser
 	memberRepository  member.Repository
 	postRepository    post.Repository
 	summaryRepository summary.Repository
+}
+
+func NewParser(
+	parser *util.PostParser,
+	memberRepository member.Repository,
+	postRepository post.Repository,
+	summaryRepository summary.Repository,
+) *Parser {
+	return &Parser{
+		parser:            parser,
+		memberRepository:  memberRepository,
+		postRepository:    postRepository,
+		summaryRepository: summaryRepository,
+	}
 }
 
 func (w *Parser) ParseRecentPostByMember(ctx context.Context, memberId string, summarizeRequestChannel *channel.SummarizeRequest) {

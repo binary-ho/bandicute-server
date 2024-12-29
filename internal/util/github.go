@@ -21,7 +21,7 @@ type GitHubService struct {
 	pullRequestTemplate *template.PullRequestTemplate
 }
 
-func NewGitHubPRService(token string) (*GitHubService, error) {
+func NewGitHubService(token string) (*GitHubService, error) {
 	client := createOauth2Client(token)
 	pullRequestTemplate, err := template.NewPullRequestTemplate()
 	if err != nil {

@@ -9,8 +9,17 @@ import (
 )
 
 type PullRequestOpener struct {
+	githubService         *util.GitHubService
 	pullRequestRepository pullRequest.Repository
-	githubService         util.GitHubService
+}
+
+func NewPullRequestOpener(
+	githubService *util.GitHubService,
+	pullRequestRepository pullRequest.Repository) *PullRequestOpener {
+	return &PullRequestOpener{
+		githubService:         githubService,
+		pullRequestRepository: pullRequestRepository,
+	}
 }
 
 func (p *PullRequestOpener) OpenPullRequest(req request.OpenPullRequest) {

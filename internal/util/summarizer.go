@@ -7,24 +7,24 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-type Summarizer struct {
+type PostSummarizer struct {
 	openaiClient          *openai.Client
 	summaryPromptTemplate *template.SummaryPromptTemplate
 }
 
-func NewSummarizer(apiKey string) (*Summarizer, error) {
+func NewPostSummarizer(apiKey string) (*PostSummarizer, error) {
 	summaryPromptTemplate, err := template.NewSummaryPromptTemplate()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Summarizer{
+	return &PostSummarizer{
 		openaiClient:          openai.NewClient(apiKey),
 		summaryPromptTemplate: summaryPromptTemplate,
 	}, nil
 }
 
-func (s *Summarizer) Summarize(ctx context.Context, title, content string) (string, error) {
+func (s *PostSummarizer) Summarize(ctx context.Context, title, content string) (string, error) {
 	summaryPrompt, err := s.summaryPromptTemplate.FillOut(title, content)
 	if err != nil {
 		return "", err

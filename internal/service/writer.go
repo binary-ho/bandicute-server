@@ -13,6 +13,13 @@ type Writer struct {
 	parseRequestChannel   *channel.ParsePostByMemberIdRequest
 }
 
+func NewWriter(studyMemberRepository studyMember.Repository, parseRequestChannel *channel.ParsePostByMemberIdRequest) *Writer {
+	return &Writer{
+		studyMemberRepository: studyMemberRepository,
+		parseRequestChannel:   parseRequestChannel,
+	}
+}
+
 // TODO: PageNation으로 일종의 Chunk-Oriented 흉내낼 수 있으면 좋을듯.
 func (w *Writer) WriteAllMembersPost(ctx context.Context) {
 	studyMemberIds, err := w.studyMemberRepository.GetAllMemberId(ctx)

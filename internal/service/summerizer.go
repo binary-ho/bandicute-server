@@ -14,11 +14,27 @@ import (
 )
 
 type Summarizer struct {
-	summarizer            *util.Summarizer
+	summarizer            *util.PostSummarizer
 	memberRepository      member.Repository
 	summaryRepository     summary.Repository
 	studyRepository       study.Repository
 	pullRequestRepository pullRequest.Repository
+}
+
+func NewSummarizer(
+	summarizer *util.PostSummarizer,
+	memberRepository member.Repository,
+	summaryRepository summary.Repository,
+	studyRepository study.Repository,
+	pullRequestRepository pullRequest.Repository,
+) *Summarizer {
+	return &Summarizer{
+		summarizer:            summarizer,
+		memberRepository:      memberRepository,
+		summaryRepository:     summaryRepository,
+		studyRepository:       studyRepository,
+		pullRequestRepository: pullRequestRepository,
+	}
 }
 
 func (s *Summarizer) Summarize(req request.Summarize, openPullRequestRequestChannel *channel.OpenPullRequestRequest) {
