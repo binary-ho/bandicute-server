@@ -39,6 +39,24 @@ func (r *SummaryRepository) Create(ctx context.Context, model *summary.Model) (*
 	return model, err
 }
 
+func (r *SummaryRepository) CreateAll(ctx context.Context, models []*summary.Model) ([]*summary.Model, error) {
+	modelValues := make([]summary.Model, len(models))
+	for _, model := range models {
+		modelValues = append(modelValues, *model)
+	}
+
+	req, err := r.Connection.NewRequest(ctx, postMethod, summary.TableName, "", modelValues)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.Connection.Do(req, modelValues)
+	for i, modelValue := range modelValues {
+		models[i] = &modelValue
+	}
+	return models, err
+}
+
 func (r *SummaryRepository) Update(ctx context.Context, model *summary.Model) (*summary.Model, error) {
 	req, err := r.NewRequest(ctx, patchMethod, summary.TableName, "id=eq."+model.ID, model)
 	if err != nil {

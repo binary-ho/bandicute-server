@@ -8,6 +8,7 @@ import (
 
 type Repository interface {
 	GetById(ctx context.Context, id string) (*Model, error)
+	GetAllByMemberId(ctx context.Context, memberID string) ([]*Model, error)
 }
 
 func NewStudyRepository(base connection.Connection) Repository {

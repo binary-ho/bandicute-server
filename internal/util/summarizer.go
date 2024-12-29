@@ -1,4 +1,4 @@
-package service
+package util
 
 import (
 	"bandicute-server/internal/template"
