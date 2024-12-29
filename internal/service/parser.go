@@ -1,114 +1,80 @@
 package service
 
 import (
+	"bandicute-server/internal/service/channel"
+	"bandicute-server/internal/service/request"
+	"bandicute-server/internal/storage/repository/member"
 	"bandicute-server/internal/storage/repository/post"
+	"bandicute-server/internal/storage/repository/summary"
+	"bandicute-server/internal/util"
 	"bandicute-server/pkg/logger"
 	"context"
 	"fmt"
-	"strings"
-	"time"
-
-	"github.com/mmcdole/gofeed"
 )
 
-const FeedUrlSuffix = "/rss"
-
-type PostParser struct {
-	feedParser *gofeed.Parser
+type Parser struct {
+	parser            util.PostParser
+	memberRepository  member.Repository
+	postRepository    post.Repository
+	summaryRepository summary.Repository
 }
 
-func NewRssParser() *PostParser {
-	return &PostParser{
-		feedParser: gofeed.NewParser(),
-	}
-}
-
-func (p *PostParser) Parse(ctx context.Context, blogUrl string) ([]*post.Model, error) {
-	feedUrl := getFeedUrl(blogUrl)
-	return p.parseFeed(ctx, feedUrl)
-}
-
-func getFeedUrl(blogUrl string) string {
-	if strings.HasSuffix(blogUrl, FeedUrlSuffix) {
-		return blogUrl
-	}
-	return strings.TrimSuffix(blogUrl, "/") + FeedUrlSuffix
-}
-
-func (p *PostParser) parseFeed(ctx context.Context, rssFeedUrl string) ([]*post.Model, error) {
-	feed, err := p.feedParser.ParseURLWithContext(rssFeedUrl, ctx)
+func (w *Parser) ParseRecentPostByMember(ctx context.Context, memberId string, summarizeRequestChannel *channel.SummarizeRequest) {
+	// 1. Get StudyMember
+	member, err := w.memberRepository.GetById(ctx, memberId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parseFeed post feed: %w", err)
+		logger.Error("Failed to get study member", logger.Fields{
+			"memberId": memberId,
+			"error":    err.Error(),
+		})
+		return
 	}
 
-	var posts []*post.Model
-	for _, item := range feed.Items {
-		publishedAt, parseErr := parsePublishedAt(item)
-		if parseErr != nil {
-			logParseError(rssFeedUrl, item, err)
-			return nil, fmt.Errorf("failed to parse published at %s: %w", publishedAt, parseErr)
-		}
-
-		posts = append(posts, createPost(item, publishedAt))
+	// 2. Parse Member's Blog
+	recentPosts, err := w.parseRecentPostsByMember(ctx, err, member)
+	if err != nil {
+		logger.Error("Failed to parse recent posts", logger.Fields{
+			"member": member,
+			"error":  err.Error(),
+		})
+		return
 	}
 
-	logParseSuccess(rssFeedUrl, posts)
-	return posts, nil
+	for _, eachPost := range recentPosts {
+		go w.createPostAndRequestSummarize(ctx, eachPost, summarizeRequestChannel)
+	}
+	return
 }
 
-func parsePublishedAt(item *gofeed.Item) (*time.Time, error) {
-	if publishedAt := item.PublishedParsed; publishedAt != nil {
-		return publishedAt, nil
+func (w *Parser) parseRecentPostsByMember(ctx context.Context, err error, member *member.Model) ([]*post.Model, error) {
+	// 1. Parse post
+	posts, err := w.parser.Parse(ctx, member.Blog)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parseFeed post: %w", err)
 	}
 
-	return parsePublishedDate(item.Published)
+	// 2. Filter recent post
+	latestPost, err := w.postRepository.GetLatestByMemberId(ctx, member.ID)
+	return util.FilterRecentPost(latestPost, posts), nil
 }
 
-// parsePublishedDate attempts to parseFeed a date string in various formats
-func parsePublishedDate(date string) (*time.Time, error) {
-	formats := []string{
-		time.RFC1123,
-		time.RFC1123Z,
-		time.RFC3339,
-		time.RFC3339Nano,
-		"2006-01-02T15:04:05Z",
-		"2006-01-02 15:04:05",
-		"Mon, 02 Jan 2006 15:04:05 -0700",
+func (w *Parser) createPostAndRequestSummarize(ctx context.Context, post *post.Model, requestChannel *channel.SummarizeRequest) {
+	// 1. Save post
+	savedPost, err := w.postRepository.Create(ctx, post)
+	if err != nil {
+		logger.Error("Failed to create post", logger.Fields{
+			"post":  post,
+			"error": err.Error(),
+		})
+		return
 	}
 
-	for _, format := range formats {
-		if t, err := time.Parse(format, date); err == nil {
-			return &t, nil
-		}
+	// TODO: 2. Save empty summary
+	// + 포스트 저장과, Summarize 생성은 한 트랜잭션에 묶여야 한다. 또한 현재 실패에 대한 고려가 없음
+
+	// 3. Request summarize
+	*requestChannel <- request.Summarize{
+		Context: ctx,
+		Post:    savedPost,
 	}
-
-	return nil, fmt.Errorf("unable to parseFeed date: %s", date)
-}
-
-func createPost(item *gofeed.Item, publishedAt *time.Time) *post.Model {
-	return &post.Model{
-		Title:       item.Title,
-		URL:         item.Link,
-		Content:     item.Content,
-		GUID:        item.GUID,
-		PublishedAt: *publishedAt,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-}
-
-func logParseError(rssFeedUrl string, item *gofeed.Item, err error) {
-	logger.Warn("Failed to parseFeed published date", logger.Fields{
-		"rssFeedUrl": rssFeedUrl,
-		"title":      item.Title,
-		"date":       item.Published,
-		"error":      err.Error(),
-	})
-}
-
-func logParseSuccess(rssFeedUrl string, posts []*post.Model) {
-	logger.Info("Successfully parsed post", logger.Fields{
-		"rssFeedUrl": rssFeedUrl,
-		"posts":      len(posts),
-	})
 }

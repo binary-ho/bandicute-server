@@ -1,9 +1,7 @@
-package service
+package util
 
 import (
-	"bandicute-server/internal/storage/repository/member"
 	"bandicute-server/internal/storage/repository/post"
-	"bandicute-server/internal/storage/repository/study"
 	"bandicute-server/internal/template"
 	"bandicute-server/pkg/logger"
 	"context"
@@ -18,27 +16,27 @@ import (
 
 const ReferencePrefix = "refs/heads/"
 
-type GitHubPRService struct {
+type GitHubService struct {
 	client              *github.Client
 	pullRequestTemplate *template.PullRequestTemplate
 }
 
-func NewGitHubPRService(token string) (*GitHubPRService, error) {
+func NewGitHubPRService(token string) (*GitHubService, error) {
 	client := createOauth2Client(token)
 	pullRequestTemplate, err := template.NewPullRequestTemplate()
 	if err != nil {
 		return nil, err
 	}
 
-	return &GitHubPRService{
+	return &GitHubService{
 		client:              github.NewClient(client),
 		pullRequestTemplate: pullRequestTemplate,
 	}, nil
 }
 
-func (s *GitHubPRService) CreatePR(ctx context.Context, study *study.Model, member *member.Model, post *post.Model, summary string) (string, error) {
+func (s *GitHubService) CreatePR(ctx context.Context, post *post.Model, repositoryName, memberName, summary string) (string, error) {
 	// 1. Parse storage Repository
-	owner, repo, err := parseOwnerAndRepo(study.Repository)
+	owner, repo, err := parseOwnerAndRepo(repositoryName)
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +66,7 @@ func (s *GitHubPRService) CreatePR(ctx context.Context, study *study.Model, memb
 
 	// 4. PR Tempate 채우기
 	publishedAt := post.PublishedAt.Format("2006년 01월 02일")
-	pullRequestContent, err := s.pullRequestTemplate.FillOut(member.Name, post.Title, publishedAt, post.URL, summary)
+	pullRequestContent, err := s.pullRequestTemplate.FillOut(memberName, post.Title, publishedAt, post.URL, summary)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute summaryPromptTemplate: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	GetByPostId(ctx context.Context, blogPostID string) (*Model, error)
 	Create(ctx context.Context, summary *Model) (*Model, error)
+	CreateAll(ctx context.Context, summaries []*Model) ([]*Model, error)
 	Update(ctx context.Context, summary *Model) (*Model, error)
 }
 

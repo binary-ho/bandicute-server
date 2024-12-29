@@ -30,6 +30,23 @@ func (r *StudyRepository) GetById(ctx context.Context, id string) (*study.Model,
 	return studies[0], nil
 }
 
+func (r *StudyRepository) GetAllByMemberId(ctx context.Context, memberID string) ([]*study.Model, error) {
+	query := "select=*" +
+		"&study_members!inner(member_id)" +
+		"&study_members.member_id=eq." + memberID
+	req, err := r.NewRequest(ctx, getMethod, study.TableName, query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var studies []*study.Model
+	if err := r.Do(req, &studies); err != nil {
+		return nil, err
+	}
+
+	return studies, nil
+}
+
 func (r *StudyRepository) GetStudyMembers(ctx context.Context, studyID string) ([]*studyMember.Model, error) {
 	req, err := r.NewRequest(ctx, getMethod, study.TableName, "study_id=eq."+studyID, nil)
 	if err != nil {
