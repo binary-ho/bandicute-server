@@ -37,3 +37,16 @@ func (r *StudyMemberRepository) GetAllByStudyId(ctx context.Context, studyID str
 
 	return members, nil
 }
+
+func (r *StudyMemberRepository) GetAllMemberId(ctx context.Context) ([]string, error) {
+	req, err := r.NewRequest(ctx, getMethod, studyMember.TableName, "select=member_id&distinct=member_id", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var memberIds []string
+	if err := r.Do(req, &memberIds); err != nil {
+		return nil, err
+	}
+	return memberIds, nil
+}
