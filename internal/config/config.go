@@ -22,8 +22,8 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	SupabaseURL string
-	SupabaseKey string
+	BaseURL string
+	Key     string
 }
 
 type GitHubConfig struct {
@@ -54,8 +54,8 @@ func Load() (*Config, error) {
 			Env:  getEnv("ENV", "development"),
 		},
 		Database: DatabaseConfig{
-			SupabaseURL: getEnv("SUPABASE_URL", ""),
-			SupabaseKey: getEnv("SUPABASE_KEY", ""),
+			BaseURL: getEnv("SUPABASE_URL", ""),
+			Key:     getEnv("SUPABASE_KEY", ""),
 		},
 		GitHub: GitHubConfig{
 			Token: getEnv("GITHUB_TOKEN", ""),
