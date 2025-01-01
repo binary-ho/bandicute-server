@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"bandicute-server/internal/storage/supabase"
 	"context"
 	"net/http"
 	"strings"
@@ -13,7 +12,7 @@ type Connection interface {
 }
 
 func NewConnection(baseURL, apiKey string) Connection {
-	return &supabase.Connection{
+	return &SupabaseConnection{
 		BaseURL: strings.TrimSuffix(baseURL, "/"),
 		ApiKey:  apiKey,
 		Client:  &http.Client{},

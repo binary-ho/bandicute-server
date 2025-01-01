@@ -35,7 +35,7 @@ type Config struct {
 }
 
 const (
-	configPath = "config/config.yml"
+	configPath = "config/property.yml"
 )
 
 func GetInstance() *Config {

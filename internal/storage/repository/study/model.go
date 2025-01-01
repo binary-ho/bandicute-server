@@ -8,7 +8,6 @@ import (
 // Model represents a post
 type Model struct {
 	ID          string    `json:"id"`
-	MemberID    string    `json:"member_id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Repository  string    `json:"github_repo"`

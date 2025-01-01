@@ -2,7 +2,6 @@ package pull_request
 
 import (
 	"bandicute-server/internal/storage/repository/connection"
-	"bandicute-server/internal/storage/supabase"
 	"context"
 )
 
@@ -13,5 +12,5 @@ type Repository interface {
 }
 
 func NewPullRequestRepository(conn connection.Connection) Repository {
-	return &supabase.PullRequestRepository{Connection: conn}
+	return &PullRequestRepository{Connection: conn}
 }

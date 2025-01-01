@@ -1,8 +1,8 @@
-package supabase
+package member
 
 import (
 	"bandicute-server/internal/storage/repository/connection"
-	"bandicute-server/internal/storage/repository/member"
+	"bandicute-server/internal/storage/supabase"
 	"context"
 	"fmt"
 )
@@ -11,13 +11,13 @@ type MemberRepository struct {
 	Connection connection.Connection
 }
 
-func (r *MemberRepository) GetById(ctx context.Context, id string) (*member.Model, error) {
-	req, err := r.Connection.NewRequest(ctx, getMethod, member.TableName, "id=eq."+id, nil)
+func (r *MemberRepository) GetById(ctx context.Context, id string) (*Model, error) {
+	req, err := r.Connection.NewRequest(ctx, supabase.GetMethod, TableName, "id=eq."+id, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var members []*member.Model
+	var members []*Model
 	if err := r.Connection.Do(req, &members); err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (r *MemberRepository) GetById(ctx context.Context, id string) (*member.Mode
 }
 
 func (r *MemberRepository) GetBlogUrlById(ctx context.Context, id string) (string, error) {
-	req, err := r.Connection.NewRequest(ctx, getMethod, member.TableName, "select=tistory_blog&id=eq."+id, nil)
+	req, err := r.Connection.NewRequest(ctx, supabase.GetMethod, TableName, "select=blog_url&id=eq."+id, nil)
 	if err != nil {
 		return "", err
 	}
