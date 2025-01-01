@@ -2,7 +2,6 @@ package summary
 
 import (
 	"bandicute-server/internal/storage/repository/connection"
-	"bandicute-server/internal/storage/supabase"
 	"context"
 )
 
@@ -14,5 +13,5 @@ type Repository interface {
 }
 
 func NewPostWriterRepository(base connection.Connection) Repository {
-	return &supabase.SummaryRepository{Connection: base}
+	return &SummaryRepository{Connection: base}
 }

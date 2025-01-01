@@ -2,7 +2,6 @@ package study_member
 
 import (
 	"bandicute-server/internal/storage/repository/connection"
-	"bandicute-server/internal/storage/supabase"
 	"context"
 )
 
@@ -13,5 +12,5 @@ type Repository interface {
 }
 
 func NewStudyMemberRepository(base connection.Connection) Repository {
-	return &supabase.StudyMemberRepository{Connection: base}
+	return &StudyMemberRepository{Connection: base}
 }
