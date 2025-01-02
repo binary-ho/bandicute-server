@@ -4,6 +4,7 @@ import (
 	"bandicute-server/internal/service"
 	"bandicute-server/pkg/logger"
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
 
@@ -22,46 +23,39 @@ type Response struct {
 	Error   string `json:"error,omitempty"`
 }
 
-func (app *Application) WriteAllMembersPost(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	app.writer.WriteAllMembersPost(r.Context())
-	app.sendResponse(w, "Started writing all members' posts")
+func (app *Application) WriteAllMembersPost(c *fiber.Ctx) error {
+	app.writer.WriteAllMembersPost(c.Context())
+	return c.JSON(fiber.Map{
+		"message": "Started writing all members' posts",
+	})
 }
 
-func (app *Application) WriteByStudy(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	studyId := r.PathValue("studyId")
+func (app *Application) WriteByStudy(c *fiber.Ctx) error {
+	studyId := c.Params("studyId")
 	if studyId == "" {
-		app.sendError(w, "studyId is required", http.StatusBadRequest)
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "studyId is required",
+		})
 	}
 
-	app.writer.WriteByStudy(r.Context(), studyId)
-	app.sendResponse(w, "Started writing posts for study")
+	app.writer.WriteByStudy(c.Context(), studyId)
+	return c.JSON(fiber.Map{
+		"message": "Started writing posts for study",
+	})
 }
 
-func (app *Application) WriteByMember(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	memberId := r.PathValue("memberId")
+func (app *Application) WriteByMember(c *fiber.Ctx) error {
+	memberId := c.Params("memberId")
 	if memberId == "" {
-		app.sendError(w, "memberId is required", http.StatusBadRequest)
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "memberId is required",
+		})
 	}
 
-	app.writer.WriteByMember(r.Context(), memberId)
-	app.sendResponse(w, "Started writing posts for member")
+	app.writer.WriteByMember(c.Context(), memberId)
+	return c.JSON(fiber.Map{
+		"message": "Started writing posts for member",
+	})
 }
 
 func (app *Application) sendResponse(w http.ResponseWriter, message string) {
