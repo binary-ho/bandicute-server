@@ -5,6 +5,8 @@ import (
 	pullRequest "bandicute-server/internal/storage/repository/pull-request"
 	"bandicute-server/internal/util"
 	"bandicute-server/pkg/logger"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -24,7 +26,20 @@ func NewPullRequestOpener(
 
 func (p *PullRequestOpener) OpenPullRequest(req request.OpenPullRequest) {
 	post := req.Post
-	pullRequestRul, err := p.githubService.CreatePR(req.Context, post, req.Repository, req.MemberName, req.Summary)
+	owner, repositoryName, err := parseOwnerAndRepo(req.Repository)
+	if err != nil {
+		logger.Error("Failed to parse owner and repository", logger.Fields{
+			"repo":  req.Repository,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	pullRequestRul, err := p.githubService.CreatePullRequestAndGetUrl(
+		req.Context, req.MemberName, post,
+		owner, repositoryName, req.FilePath, req.Summary,
+	)
+
 	if err != nil {
 		p.pullRequestRepository.Create(req.Context, getEmptyPullRequest(post.ID, req.StudyId))
 		logger.Error("Failed to create PR", logger.Fields{
@@ -54,6 +69,17 @@ func (p *PullRequestOpener) OpenPullRequest(req request.OpenPullRequest) {
 		})
 		return
 	}
+}
+
+func parseOwnerAndRepo(repository string) (owner, repo string, err error) {
+	parts := strings.Split(repository, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("invalid storage Repository: %s", repository)
+	}
+
+	owner = parts[len(parts)-2]
+	repo = parts[len(parts)-1]
+	return owner, repo, nil
 }
 
 func getEmptyPullRequest(postId, studyId string) *pullRequest.Model {

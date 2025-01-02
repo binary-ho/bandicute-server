@@ -43,11 +43,12 @@ func (s *Summarizer) Summarize(req request.Summarize, openPullRequestRequestChan
 	// 1. 요약 요청
 	summaryContent, err := s.summarizer.Summarize(req.Context, post.Title, post.Content)
 	if err != nil {
-		_, err = s.summaryRepository.Create(req.Context, getEmptySummary(post))
 		logger.Error("Failed to summarize post", logger.Fields{
 			"post":  post,
 			"error": err.Error(),
 		})
+
+		_, err = s.summaryRepository.Create(req.Context, getEmptySummary(post))
 		return
 	}
 
@@ -101,6 +102,7 @@ func (s *Summarizer) requestOpenPullRequest(req request.Summarize, post *post.Mo
 			MemberName: member.Name,
 			Summary:    summaryContent,
 			StudyId:    study.ID,
+			FilePath:   study.Directory,
 		}
 	}
 }

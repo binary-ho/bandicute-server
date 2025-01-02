@@ -37,7 +37,7 @@ func (w *Parser) ParseRecentPostByMember(ctx context.Context, memberId string, s
 	// 1. Get StudyMember
 	member, err := w.memberRepository.GetById(ctx, memberId)
 	if err != nil {
-		logger.Error("Failed to get study member", logger.Fields{
+		logger.Error("Failed to get member", logger.Fields{
 			"memberId": memberId,
 			"error":    err.Error(),
 		})
@@ -54,6 +54,10 @@ func (w *Parser) ParseRecentPostByMember(ctx context.Context, memberId string, s
 		return
 	}
 
+	// 3. Sanitize post contents
+	sanitizePostContent(recentPosts)
+
+	// 4. Create Post And Request Summarize
 	for _, eachPost := range recentPosts {
 		go w.createPostAndRequestSummarize(ctx, eachPost, summarizeRequestChannel)
 	}
@@ -67,7 +71,16 @@ func (w *Parser) parseRecentPostsByMember(ctx context.Context, err error, member
 		return nil, fmt.Errorf("failed to parseFeed post: %w", err)
 	}
 
-	// 2. Filter recent post
+	// 2. Add Member Id to post
+	for _, eachPost := range posts {
+		eachPost.MemberID = member.ID
+		logger.Info("Post member id added", logger.Fields{
+			"eachPost.Title": eachPost.Title,
+			"eachPost.URL":   eachPost.URL,
+		})
+	}
+
+	// 3. Filter recent post
 	latestPost, err := w.postRepository.GetLatestByMemberId(ctx, member.ID)
 	return util.FilterRecentPost(latestPost, posts), nil
 }
@@ -90,5 +103,11 @@ func (w *Parser) createPostAndRequestSummarize(ctx context.Context, post *post.M
 	*requestChannel <- request.Summarize{
 		Context: ctx,
 		Post:    savedPost,
+	}
+}
+
+func sanitizePostContent(posts []*post.Model) {
+	for _, eachPost := range posts {
+		eachPost.Content = util.SanitizeContent(eachPost.Content)
 	}
 }
