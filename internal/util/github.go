@@ -5,6 +5,7 @@ import (
 	"bandicute-server/internal/template"
 	"bandicute-server/pkg/logger"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,10 +15,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const ReferencePrefix = "refs/heads/"
+const (
+	referencePrefix      = "refs/heads/"
+	commitFileNameFormat = "[Summary] %s - %s (%s).md"
+)
 
 type GitHubService struct {
-	client              *github.Client
+	*github.Client
 	pullRequestTemplate *template.PullRequestTemplate
 }
 
@@ -29,54 +33,56 @@ func NewGitHubService(token string) (*GitHubService, error) {
 	}
 
 	return &GitHubService{
-		client:              github.NewClient(client),
-		pullRequestTemplate: pullRequestTemplate,
+		github.NewClient(client),
+		pullRequestTemplate,
 	}, nil
 }
 
-func (s *GitHubService) CreatePR(ctx context.Context, post *post.Model, repositoryName, memberName, summary string) (string, error) {
-	// 1. Parse storage Repository
-	owner, repo, err := parseOwnerAndRepo(repositoryName)
+func (s *GitHubService) CreatePullRequestAndGetUrl(ctx context.Context, studyMemberName string, post *post.Model,
+	owner, repo, filePath, content string) (string, error) {
+	// 1. 깃허브 계정 핸들 가져오기
+	bandicuteHandle, err := s.getBandicuteGithubHandle(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	// 2. Get default Branch And Reference
-	repository, _, err := s.client.Repositories.Get(ctx, owner, repo)
+	// 2. fork Repository
+	forkedRepository, err := s.forkRepository(ctx, owner, repo, bandicuteHandle)
 	if err != nil {
-		return "", fmt.Errorf("failed to get storage: %w", err)
-	}
-	defaultBranch := repository.GetDefaultBranch()
-	defaultBranchReference, _, err := s.client.Git.GetRef(ctx, owner, repo, ReferencePrefix+defaultBranch)
-	if err != nil {
-		return "", fmt.Errorf("failed to get reference: %w", err)
+		return "", err
 	}
 
-	// 3. Create a new Branch And Reference
-	newBranchName := createBranchName(post.Title)
-	newBranchReference := &github.Reference{
-		Ref:    github.String(ReferencePrefix + newBranchName),
-		Object: defaultBranchReference.Object,
-	}
-
-	_, _, err = s.client.Git.CreateRef(ctx, owner, repo, newBranchReference)
+	// 3. 새로운 브랜치 생성
+	defaultBranchName := forkedRepository.GetDefaultBranch()
+	newBranchName := createBranchName(studyMemberName)
+	err = s.createNewBranchAtForkedRepository(ctx, bandicuteHandle, forkedRepository, defaultBranchName, newBranchName)
 	if err != nil {
-		return "", fmt.Errorf("failed to create branch: %w", err)
+		return "", err
 	}
 
-	// 4. PR Tempate 채우기
-	publishedAt := post.PublishedAt.Format("2006년 01월 02일")
-	pullRequestContent, err := s.pullRequestTemplate.FillOut(memberName, post.Title, publishedAt, post.URL, summary)
+	// 4. 브랜치에 파일 만들기
+	fileNameFormat := commitFileNameFormat
+	fileName := createFileName(fileNameFormat, studyMemberName, post.Title, post.PublishedAt)
+	filePathAndName := fmt.Sprintf("%s/%s", filePath, fileName)
+	err = s.createFileToNewBranch(ctx, bandicuteHandle, forkedRepository, newBranchName, filePathAndName, content)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute summaryPromptTemplate: %w", err)
+		return "", err
 	}
 
-	// 5. PR 생성하기
-	pullRequest, _, err := s.client.PullRequests.Create(ctx, owner, repo, &github.NewPullRequest{
-		Title: github.String(pullRequestContent.Title),
-		Head:  github.String(newBranchName),
-		Base:  github.String(defaultBranch),
-		Body:  github.String(pullRequestContent.Body),
+	// 5. PR Tempate 채우기
+	pullRequestContent, err := s.createPullRequestContent(post, studyMemberName, content)
+	if err != nil {
+		return "", err
+	}
+
+	// 6. PR 생성
+	pullRequestHead := fmt.Sprintf("%s:%s", bandicuteHandle, newBranchName)
+	pullRequest, _, err := s.PullRequests.Create(ctx, owner, repo, &github.NewPullRequest{
+		Title:               github.String(pullRequestContent.Title),
+		Head:                github.String(pullRequestHead),
+		Base:                github.String(defaultBranchName),
+		Body:                github.String(pullRequestContent.Body),
+		MaintainerCanModify: github.Bool(true),
 	})
 
 	if err != nil {
@@ -84,11 +90,101 @@ func (s *GitHubService) CreatePR(ctx context.Context, post *post.Model, reposito
 	}
 
 	logger.Info("Successfully created pull request", logger.Fields{
-		"pr_number": pullRequest.GetNumber(),
-		"pr_url":    pullRequest.GetHTMLURL(),
+		"memberName": studyMemberName,
+		"postTitle":  post.Title,
+		"repository": owner + "/" + repo,
+		"pr_url":     pullRequest.GetHTMLURL(),
 	})
 
 	return pullRequest.GetHTMLURL(), nil
+}
+
+func (s *GitHubService) getBandicuteGithubHandle(ctx context.Context) (string, error) {
+	currentUser, _, err := s.Users.Get(ctx, "")
+	if err != nil || currentUser == nil {
+		return "", fmt.Errorf("failed to get authenticated user: %w", err)
+	}
+
+	return currentUser.GetLogin(), err
+}
+
+func (s *GitHubService) forkRepository(ctx context.Context, owner, repo, myHandle string) (*github.Repository, error) {
+	forked, err := s.getForkedRepositoryIfAlreadyExists(ctx, owner, repo, myHandle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if fork exists: %w", err)
+	}
+	if forked != nil {
+		return forked, nil
+	}
+
+	newForkedRepository, _, err := s.Repositories.CreateFork(ctx, owner, repo, &github.RepositoryCreateForkOptions{
+		DefaultBranchOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fork: %w", err)
+	}
+	return newForkedRepository, nil
+}
+
+func (s *GitHubService) getForkedRepositoryIfAlreadyExists(ctx context.Context, owner, repo, myHandle string) (*github.Repository, error) {
+	forks, _, err := s.Repositories.ListForks(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list forks: %w", err)
+	}
+
+	for _, forked := range forks {
+		if myHandle == forked.GetOwner().GetLogin() {
+			return forked, nil
+		}
+	}
+	return nil, nil
+}
+
+func (s *GitHubService) createNewBranchAtForkedRepository(ctx context.Context, myHandle string, forkedRepo *github.Repository, defaultBranchName, newBranchName string) error {
+	defaultBranchReference, _, err := s.Git.GetRef(ctx, myHandle, forkedRepo.GetName(), referencePrefix+defaultBranchName)
+	if err != nil {
+		return fmt.Errorf("failed to get default branch reference: %w", err)
+	}
+
+	newBranchReference := &github.Reference{
+		Ref:    github.String(referencePrefix + newBranchName),
+		Object: defaultBranchReference.Object,
+	}
+	_, _, err = s.Git.CreateRef(ctx, myHandle, forkedRepo.GetName(), newBranchReference)
+	if err != nil {
+		return fmt.Errorf("failed to create branch: %w", err)
+	}
+	return nil
+}
+
+func (s *GitHubService) createFileToNewBranch(ctx context.Context, myHandle string, forkedRepo *github.Repository, newBranchName, filePath, content string) error {
+	encodedContent := base64.StdEncoding.EncodeToString([]byte(content))
+	_, _, err := s.Repositories.CreateFile(ctx, myHandle, forkedRepo.GetName(), filePath, &github.RepositoryContentFileOptions{
+		Message: github.String("반디가 친구의 블로그에서 새로운 글을 가져왔어요!"),
+		Content: []byte(encodedContent),
+		Branch:  github.String(newBranchName),
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	return nil
+}
+
+func (s *GitHubService) createPullRequestContent(post *post.Model, studyMemberName, content string) (template.PullRequestContent, error) {
+	publishedAt := post.PublishedAt.Format("2025년 01월 01일 18시 00분")
+	pullRequestContent, err := s.pullRequestTemplate.FillOut(studyMemberName, post.Title, publishedAt, post.URL, content)
+	if err != nil {
+		return template.PullRequestContent{}, fmt.Errorf("failed to execute summaryPromptTemplate: %w", err)
+	}
+
+	return pullRequestContent, nil
+}
+
+func createFileName(fileNameFormat, memberName, postTitle string, publishedAt time.Time) string {
+	formattedDate := publishedAt.Format("06-01-02")
+	sanitizedTitle := sanitizeString(postTitle)
+	return fmt.Sprintf(fileNameFormat, sanitizedTitle, memberName, formattedDate)
 }
 
 func createOauth2Client(token string) *http.Client {
@@ -99,21 +195,9 @@ func createOauth2Client(token string) *http.Client {
 	return client
 }
 
-func parseOwnerAndRepo(repository string) (owner, repo string, err error) {
-	parts := strings.Split(repository, "/")
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("invalid storage Repository: %s", repository)
-	}
-
-	owner = parts[len(parts)-2]
-	repo = parts[len(parts)-1]
-	return owner, repo, nil
-}
-
-func createBranchName(postTitle string) string {
+func createBranchName(memberName string) string {
 	timestamp := time.Now().Format("20060102-150405")
-	sanitizedTitle := sanitizeString(postTitle)
-	branchName := fmt.Sprintf("post/%s-%s", timestamp, sanitizedTitle)
+	branchName := "summary/" + memberName + "/" + timestamp
 	return branchName
 }
 

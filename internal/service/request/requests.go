@@ -17,6 +17,7 @@ type OpenPullRequest struct {
 	MemberName string
 	Summary    string
 	StudyId    string
+	FilePath   string
 }
 
 type Summarize struct {
