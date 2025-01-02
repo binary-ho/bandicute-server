@@ -1,5 +1,5 @@
 .env*
 .idea
-internal/templates
-config/config.yml
+internal/template/templates
+config/property.yml
 config/secret.yml

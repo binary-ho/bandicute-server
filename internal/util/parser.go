@@ -89,7 +89,7 @@ func createPost(item *gofeed.Item, publishedAt *time.Time) *post.Model {
 	return &post.Model{
 		Title:       item.Title,
 		URL:         item.Link,
-		Content:     item.Content,
+		Content:     item.Description,
 		GUID:        item.GUID,
 		PublishedAt: *publishedAt,
 		CreatedAt:   time.Now(),

@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bandicute-server/pkg/logger"
 	"bytes"
 	"fmt"
 	"strings"
@@ -35,6 +36,7 @@ func NewPullRequestTemplate() (*PullRequestTemplate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &PullRequestTemplate{template: instance}, nil
 }
 
@@ -70,8 +72,12 @@ func getPullRequestTemplateInstance() (*template.Template, error) {
 		return pullRequestTemplateInstance, nil
 	}
 
-	var format pullRequestTemplateFormat
+	format := &pullRequestTemplateFormat{}
 	err := parseTemplateByFormat(format, pullRequestTemplateFileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to getPullRequestTemplateInstance : %w", err)
+	}
+
 	result := buildTemplate(format)
 
 	pullRequestTemplateInstance, err = template.New(pullRequestTemplateFileName).Parse(result)
@@ -81,12 +87,12 @@ func getPullRequestTemplateInstance() (*template.Template, error) {
 	return pullRequestTemplateInstance, nil
 }
 
-func buildTemplate(format pullRequestTemplateFormat) string {
+func buildTemplate(format *pullRequestTemplateFormat) string {
 	pullRequestContent := buildContent(format)
 	return format.Title + "\n---\n" + pullRequestContent
 }
 
-func buildContent(format pullRequestTemplateFormat) string {
+func buildContent(format *pullRequestTemplateFormat) string {
 	var contentBuilder strings.Builder
 	for _, section := range format.Body.Sections {
 		switch section.Type {
@@ -105,6 +111,10 @@ func buildContent(format pullRequestTemplateFormat) string {
 			if section.Content != "" {
 				contentBuilder.WriteString(section.Content + "\n\n")
 			}
+		default:
+			logger.Warn("Unknown section type in buildContent", logger.Fields{
+				"type": section.Type,
+			})
 		}
 	}
 	return contentBuilder.String()
