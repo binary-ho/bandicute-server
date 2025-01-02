@@ -44,8 +44,12 @@ func getSummaryPromptTemplateInstance() (*template.Template, error) {
 		return summaryPromptTemplateInstance, nil
 	}
 
-	var format summaryPromptTemplateFormat
+	format := &summaryPromptTemplateFormat{}
 	err := parseTemplateByFormat(format, summaryPromptTemplateFileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parseFeed summary prompt promptTemplate : %w", err)
+	}
+
 	summaryPromptTemplateInstance, err = template.New(summaryPromptTemplateFileName).Parse(format.Template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create summaryPromptTemplate : %w", err)
