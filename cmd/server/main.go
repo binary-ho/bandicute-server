@@ -16,7 +16,6 @@ import (
 	"bandicute-server/internal/util"
 	"bandicute-server/pkg/logger"
 	"fmt"
-	"net/http"
 	"strconv"
 )
 
@@ -78,7 +77,9 @@ func main() {
 	// API 서버 실행
 	writer := service.NewWriter(studyMemberRepo, &parsePostByMemberIdRequestChannel)
 	app := api.NewApplication(writer)
-	err = http.ListenAndServe(getStringPort(config.Server.Port), app.Routes())
+
+	fiberApp := app.Routes()
+	err = fiberApp.Listen(getStringPort(config.Server.Port))
 	if err != nil {
 		logger.Fatal("Server Error", logger.Fields{
 			"error": err.Error(),

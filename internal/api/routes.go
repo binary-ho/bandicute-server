@@ -1,12 +1,12 @@
 package api
 
-import "net/http"
+import "github.com/gofiber/fiber/v2"
 
-func (app *Application) Routes() *http.ServeMux {
-	mux := http.NewServeMux()
+func (app *Application) Routes() *fiber.App {
+	router := fiber.New()
 
-	mux.HandleFunc("POST /posts", app.WriteAllMembersPost)
-	mux.HandleFunc("POST /studies/{studyId}/posts", app.WriteByStudy)
-	mux.HandleFunc("POST /members/{memberId}/posts", app.WriteByMember)
-	return mux
+	router.Post("/posts", app.WriteAllMembersPost)
+	router.Post("/studies/:studyId/posts", app.WriteByStudy)
+	router.Post("/members/:memberId/posts", app.WriteByMember)
+	return router
 }
