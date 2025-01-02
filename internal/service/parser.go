@@ -71,7 +71,16 @@ func (w *Parser) parseRecentPostsByMember(ctx context.Context, err error, member
 		return nil, fmt.Errorf("failed to parseFeed post: %w", err)
 	}
 
-	// 2. Filter recent post
+	// 2. Add Member Id to post
+	for _, eachPost := range posts {
+		eachPost.MemberID = member.ID
+		logger.Info("Post member id added", logger.Fields{
+			"eachPost.Title": eachPost.Title,
+			"eachPost.URL":   eachPost.URL,
+		})
+	}
+
+	// 3. Filter recent post
 	latestPost, err := w.postRepository.GetLatestByMemberId(ctx, member.ID)
 	return util.FilterRecentPost(latestPost, posts), nil
 }
