@@ -9,6 +9,7 @@ import (
 
 type Job interface {
 	AddJob(scheduler *gocron.Scheduler)
+	Cancel()
 }
 
 const writeJobDuration = 4 * time.Hour
@@ -30,7 +31,9 @@ func (j *WriteAllMemberPostJob) AddJob(scheduler *gocron.Scheduler) {
 		gocron.DurationJob(j.duration),
 		gocron.NewTask(func() {
 			logger.Info("start WriteAllMemberPostJob by batch", nil)
-			j.writeFunction(context.Background())
+			ctx, cancelFunction := context.WithTimeout(context.Background(), j.duration)
+			j.writeFunction(ctx)
+			defer cancelFunction()
 			logger.Info("end WriteAllMemberPostJob by batch", nil)
 		}),
 	)
