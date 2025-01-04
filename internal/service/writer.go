@@ -30,10 +30,10 @@ func (w *Writer) WriteAllMembersPost(ctx context.Context) {
 		return
 	}
 
-	for _, id := range studyMemberIds {
+	for _, memberId := range studyMemberIds {
 		*w.parseRequestChannel <- request.ParsePostByMemberId{
 			Context:  ctx,
-			MemberId: id,
+			MemberId: memberId,
 		}
 	}
 }
