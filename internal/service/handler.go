@@ -1,28 +1,27 @@
-package task
+package service
 
 import (
-	"bandicute-server/internal/service"
 	"bandicute-server/internal/service/channel"
 )
 
-type Handler struct {
-	parser                            *service.Parser
-	summarizer                        *service.Summarizer
-	pullRequestOpener                 *service.PullRequestOpener
+type Dispatcher struct {
+	parser                            *Parser
+	summarizer                        *Summarizer
+	pullRequestOpener                 *PullRequestOpener
 	parsePostByMemberIdRequestChannel *channel.ParsePostByMemberIdRequest
 	summarizeRequestChannel           *channel.SummarizeRequest
 	openPullRequestRequestChannel     *channel.OpenPullRequestRequest
 }
 
-func NewHandler(
-	parser *service.Parser,
-	summarizer *service.Summarizer,
-	pullRequestOpener *service.PullRequestOpener,
+func NewDispatcher(
+	parser *Parser,
+	summarizer *Summarizer,
+	pullRequestOpener *PullRequestOpener,
 	parsePostByMemberIdRequestChannel *channel.ParsePostByMemberIdRequest,
 	summarizeRequestChannel *channel.SummarizeRequest,
 	openPullRequestRequestChannel *channel.OpenPullRequestRequest,
-) *Handler {
-	return &Handler{
+) *Dispatcher {
+	return &Dispatcher{
 		parser:                            parser,
 		summarizer:                        summarizer,
 		pullRequestOpener:                 pullRequestOpener,
@@ -32,7 +31,7 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) Run() {
+func (h *Dispatcher) Run() {
 	go func() {
 		for {
 			select {
