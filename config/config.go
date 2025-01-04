@@ -11,9 +11,8 @@ var instance *Config
 
 type Config struct {
 	Server struct {
-		Port    int    `yaml:"port"`
-		Env     string `yaml:"env"`
-		Address string `yaml:"address"`
+		Port int    `yaml:"port"`
+		Env  string `yaml:"env"`
 	} `yaml:"server"`
 
 	Database struct {

@@ -1,26 +1,53 @@
 package api
 
 import (
+	"bandicute-server/config"
+	"bandicute-server/internal/job"
 	"bandicute-server/internal/service"
 	"bandicute-server/pkg/logger"
 	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
+	"strconv"
 )
 
 type Application struct {
-	writer *service.Writer
+	config            *config.Config
+	writer            *service.Writer
+	serviceDispatcher *service.Dispatcher
+	scheduler         *job.Scheduler
 }
 
-func NewApplication(writer *service.Writer) *Application {
+func NewApplication(config *config.Config,
+	writer *service.Writer,
+	dispatcher *service.Dispatcher,
+	scheduler *job.Scheduler) *Application {
 	return &Application{
-		writer: writer,
+		config:            config,
+		writer:            writer,
+		serviceDispatcher: dispatcher,
+		scheduler:         scheduler,
 	}
 }
 
 type Response struct {
 	Message string `json:"message,omitempty"`
 	Error   string `json:"error,omitempty"`
+}
+
+func (app *Application) Run() {
+	app.scheduler.Start()
+	defer app.scheduler.Shutdown()
+
+	app.serviceDispatcher.Run()
+
+	fiberApp := app.Routes()
+	err := fiberApp.Listen(getStringPort(app.config.Server.Port))
+	if err != nil {
+		logger.Fatal("Server Error", logger.Fields{
+			"error": err.Error(),
+		})
+	}
 }
 
 func (app *Application) WriteAllMembersPost(c *fiber.Ctx) error {
@@ -77,4 +104,8 @@ func (app *Application) sendError(w http.ResponseWriter, message string, status 
 			"error": err.Error(),
 		})
 	}
+}
+
+func getStringPort(port int) string {
+	return ":" + strconv.Itoa(port)
 }
