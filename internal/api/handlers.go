@@ -40,7 +40,7 @@ func (app *Application) Run() {
 	defer app.scheduler.Shutdown()
 
 	app.dispatcher.Run()
-	app.dispatcher.Cancel()
+	defer app.dispatcher.Cancel()
 
 	fiberApp := app.Routes()
 	err := fiberApp.Listen(getStringPort(app.config.Server.Port))

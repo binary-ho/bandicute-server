@@ -9,7 +9,6 @@ import (
 
 type Job interface {
 	AddJob(scheduler *gocron.Scheduler)
-	Cancel()
 }
 
 const writeJobDuration = 4 * time.Hour
