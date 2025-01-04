@@ -16,4 +16,9 @@ type Model struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type MemberId struct {
+	MemberId string `json:"member_id"`
+}
+
 const TableName = connection.Table("study_members")
+const MemberIdView = connection.Table("study_members_member_id")

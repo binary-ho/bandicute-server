@@ -30,7 +30,7 @@ func (r *StudyMemberRepository) GetAllByStudyId(ctx context.Context, studyID str
 		return nil, err
 	}
 
-	var members []*Model
+	members := make([]*Model, 0)
 	if err := r.Do(req, &members); err != nil {
 		return nil, err
 	}
@@ -39,14 +39,22 @@ func (r *StudyMemberRepository) GetAllByStudyId(ctx context.Context, studyID str
 }
 
 func (r *StudyMemberRepository) GetAllMemberId(ctx context.Context) ([]string, error) {
-	req, err := r.NewRequest(ctx, supabase.GetMethod, TableName, "select=member_id&distinct=member_id", nil)
+	req, err := r.NewRequest(ctx, supabase.GetMethod, MemberIdView, "select=member_id", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var memberIds []string
+	memberIds := make([]*MemberId, 0)
 	if err := r.Do(req, &memberIds); err != nil {
 		return nil, err
 	}
-	return memberIds, nil
+	return convertToStrings(memberIds), nil
+}
+
+func convertToStrings(memberIds []*MemberId) []string {
+	stringIds := make([]string, len(memberIds))
+	for _, id := range memberIds {
+		stringIds = append(stringIds, id.MemberId)
+	}
+	return stringIds
 }
