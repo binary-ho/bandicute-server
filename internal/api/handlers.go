@@ -12,10 +12,10 @@ import (
 )
 
 type Application struct {
-	config            *config.Config
-	writer            *service.Writer
-	serviceDispatcher *service.Dispatcher
-	scheduler         *job.Scheduler
+	config     *config.Config
+	writer     *service.Writer
+	dispatcher *service.Dispatcher
+	scheduler  *job.Scheduler
 }
 
 func NewApplication(config *config.Config,
@@ -23,10 +23,10 @@ func NewApplication(config *config.Config,
 	dispatcher *service.Dispatcher,
 	scheduler *job.Scheduler) *Application {
 	return &Application{
-		config:            config,
-		writer:            writer,
-		serviceDispatcher: dispatcher,
-		scheduler:         scheduler,
+		config:     config,
+		writer:     writer,
+		dispatcher: dispatcher,
+		scheduler:  scheduler,
 	}
 }
 
@@ -39,7 +39,8 @@ func (app *Application) Run() {
 	app.scheduler.Start()
 	defer app.scheduler.Shutdown()
 
-	app.serviceDispatcher.Run()
+	app.dispatcher.Run()
+	defer app.dispatcher.Cancel()
 
 	fiberApp := app.Routes()
 	err := fiberApp.Listen(getStringPort(app.config.Server.Port))
