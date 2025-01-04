@@ -3,6 +3,7 @@ package main
 import (
 	"bandicute-server/config"
 	"bandicute-server/internal/api"
+	"bandicute-server/internal/job"
 	"bandicute-server/internal/service"
 	"bandicute-server/internal/service/channel"
 	"bandicute-server/internal/storage/repository/connection"
@@ -12,11 +13,9 @@ import (
 	"bandicute-server/internal/storage/repository/study"
 	studyMember "bandicute-server/internal/storage/repository/study-member"
 	"bandicute-server/internal/storage/repository/summary"
-	"bandicute-server/internal/task"
 	"bandicute-server/internal/util"
 	"bandicute-server/pkg/logger"
 	"fmt"
-	"strconv"
 )
 
 func main() {
@@ -60,8 +59,14 @@ func main() {
 	summarizeRequestChannel := make(channel.SummarizeRequest)
 	openPullRequestRequestChannel := make(channel.OpenPullRequestRequest)
 
+	// Writer 초기화
+	writer := service.NewWriter(studyMemberRepo, &parsePostByMemberIdRequestChannel)
+
+	// 스케줄러 초기화
+	scheduler := createScheduler(writer)
+
 	// 태스크 핸들러 초기화 및 실행
-	taskHandler := task.NewHandler(
+	taskHandler := service.NewDispatcher(
 		parser,
 		summarizer,
 		pullRequestOpener,
@@ -69,25 +74,21 @@ func main() {
 		&summarizeRequestChannel,
 		&openPullRequestRequestChannel,
 	)
-	taskHandler.Run()
 
 	// logger setup
 	logger.Setup(config.Logging.Level)
 
 	// API 서버 실행
-	writer := service.NewWriter(studyMemberRepo, &parsePostByMemberIdRequestChannel)
-	app := api.NewApplication(writer)
 
-	fiberApp := app.Routes()
-	err = fiberApp.Listen(getStringPort(config.Server.Port))
-	if err != nil {
-		logger.Fatal("Server Error", logger.Fields{
-			"error": err.Error(),
-		})
-	}
+	app := api.NewApplication(config, writer, taskHandler, scheduler)
+	app.Run()
 	fmt.Println("exit..")
 }
 
-func getStringPort(port int) string {
-	return ":" + strconv.Itoa(port)
+func createScheduler(writer *service.Writer) *job.Scheduler {
+	writePostJob := job.NewWriteAllMemberPostJob(writer.WriteAllMembersPost)
+	jobs := []job.Job{
+		writePostJob,
+	}
+	return job.NewScheduler(&jobs)
 }
