@@ -31,6 +31,13 @@ type Config struct {
 	Logging struct {
 		Level string `yaml:"level"`
 	} `yaml:"logging"`
+
+	CORS struct {
+		AllowOrigins     string `yaml:"allow_origins"`
+		AllowMethods     string `yaml:"allow_methods"`
+		AllowHeaders     string `yaml:"allow_headers"`
+		AllowCredentials bool   `yaml:"allow_credentials"`
+	} `yaml:"cors"`
 }
 
 const (
