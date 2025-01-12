@@ -42,6 +42,7 @@ func (app *Application) Run() {
 	app.serviceDispatcher.Run()
 
 	fiberApp := app.Routes()
+
 	err := fiberApp.Listen(getStringPort(app.config.Server.Port))
 	if err != nil {
 		logger.Fatal("Server Error", logger.Fields{
