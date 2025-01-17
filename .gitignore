@@ -1,5 +1,12 @@
-.env*
+# IDE 설정 파일
 .idea
+
+# 템플릿
 internal/template/templates
+
+# 설정 값
 config/property.yml
 config/secret.yml
+
+# 빌드 파일
+*.tar

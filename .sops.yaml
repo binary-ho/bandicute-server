@@ -1,0 +1,6 @@
+creation_rules:
+  - path_regex: config/property\.yml
+    unencrypted_regex: '^(logging)$'
+    key_groups:
+      - age:
+        - age1xs3094qjr954kqcqpy02unxpjpq9m8fgvsmurevkqxmsxc9z7dmq52z4jt
