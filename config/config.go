@@ -24,9 +24,9 @@ type Config struct {
 		Token string `yaml:"token"`
 	} `yaml:"github"`
 
-	OpenAI struct {
+	SummaryAssistant struct {
 		APIKey string `yaml:"api_key"`
-	} `yaml:"openai"`
+	} `yaml:"summary_assistant"`
 
 	Logging struct {
 		Level string `yaml:"level"`

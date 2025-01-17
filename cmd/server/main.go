@@ -33,7 +33,7 @@ func main() {
 
 	// Util 초기화
 	postParser := util.NewPostParser()
-	postSummarizer, err := util.NewPostSummarizer(config.OpenAI.APIKey)
+	postSummarizer, err := util.NewPostSummarizer(config.SummaryAssistant.APIKey)
 	if err != nil {
 		logger.Fatal("Failed to initialize post summarizer", logger.Fields{
 			"error": err.Error(),
