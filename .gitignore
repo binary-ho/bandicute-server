@@ -1,12 +1,16 @@
+*.log
+
 # IDE 설정 파일
 .idea
 
 # 템플릿
 internal/template/templates
 
-# 설정 값
+# property 파일
 config/property.yml
-config/secret.yml
 
 # 빌드 파일
 *.tar
+
+# secret 파일
+agekey.txt
