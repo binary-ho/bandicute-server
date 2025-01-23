@@ -12,8 +12,17 @@ encrypt:
 
 decrypt:
 	@echo "Decrypt $(ENCRYPTED_FILE) -> $(DECRYPTED_FILE)"
-	export SOPS_AGE_KEY_FILE=./agekey.txt
+	export SOPS_PRIVATE_KEY_FILE=./agekey.txt
 	sops --decrypt $(ENCRYPTED_FILE) > $(DECRYPTED_FILE)
 	@echo "Decrypt Done."
 
-.PHONY: encrypt decrypt
+SOPS_VERSION := 3.9.3
+sops:
+	@echo "Installing SOPS version $(SOPS_VERSION)..."
+	wget "https://github.com/getsops/sops/releases/download/v$(SOPS_VERSION)/sops-v$(SOPS_VERSION).linux.amd64" -O sops
+	chmod +x sops
+	sudo mv sops /usr/local/bin/sops
+	sops --version
+	@echo "SOPS installed."
+
+.PHONY: encrypt decrypt sops
