@@ -1,0 +1,37 @@
+{
+  "title": "[{{.member_name}}] {{.post_title}}",
+  "body": {
+    "sections": [
+      {
+        "type": "header",
+        "content": "안녕하세요~! {{.member_name}}님의 새로운 블로그 포스트가 공유되었습니다. 🎉"
+      },
+      {
+        "type": "info",
+        "title": "📝 아티클 정보",
+        "items": [
+          "작성자: {{.member_name}}",
+          "제목: {{.post_title}}",
+          "작성일: {{.published_at}}",
+          "원문 링크: {{.post_url}}"
+        ]
+      },
+      {
+        "type": "summary",
+        "title": "📚 요약",
+        "content": "{{.summary}}"
+      },
+      {
+        "type": "recommendation",
+        "title": "💡 이 글을 읽으면 좋은 이유",
+        "content": "이 글은 {{.member_name}}님이 정성스럽게 작성한 기술 블로그 포스트입니다.\n위 요약본을 보시고 관심이 생기셨다면, 원문 링크를 통해 전체 내용을 확인해보세요!"
+      },
+      {
+        "type": "footer",
+        "content": "---\n*이 PR은 자동으로 생성되었습니다. - Bandicute*"
+      }
+    ]
+  },
+  "variables": ["member_name", "post_title", "published_at", "post_url", "summary"],
+  "description": "블로그 포스트 PR 생성을 위한 템플릿"
+}

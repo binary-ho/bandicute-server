@@ -3,9 +3,6 @@
 # IDE 설정 파일
 .idea
 
-# 템플릿
-internal/template/templates
-
 # property 파일
 config/property.yml
 
