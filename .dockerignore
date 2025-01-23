@@ -1,10 +1,8 @@
+.git
+.gitignore
+.env
 *.log
-
-# IDE 설정 파일
 .idea
-
-# 템플릿
-internal/template/templates
 
 # property 파일
 config/property.yml
@@ -14,4 +12,3 @@ config/property.yml
 
 # secret 파일
 agekey.txt
-.*secrets
