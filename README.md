@@ -1,10 +1,10 @@
 # Bandicute (반디기웃)
-### (이 Readme는 AI를 통해 작성되었습니다.)
+(이 Readme는 AI를 통해 작성되었습니다.)
 
 <div align="center">
-  <img src="docs/images/bandicute-logo.png" alt="Bandicute Logo" width="200"/>
-  
-  ### 스터디원들의 블로그 글을 자동으로 요약하고 공유하는 가장 쉬운 방법 🦊
+
+  <img src="favicon.ico" alt="Bandicute Logo"/>
+  ### 스터디원들의 블로그 글을 자동으로 요약하고 공유하는 가장 쉬운 방법! 
 
 </div>
 
