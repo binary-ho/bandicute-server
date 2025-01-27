@@ -5,7 +5,7 @@
 
   <h3>
     <img src="favicon.ico" alt="Bandicute Logo"/>
-    스터디원들의 블로그 글을 자동으로 공유하는 가장 쉬운 방법! 
+    스터디원들의 블로그 글을 공유하는 가장 쉬운 방법! 
     <img src="favicon.ico" alt="Bandicute Logo"/>
   </h3>
 
